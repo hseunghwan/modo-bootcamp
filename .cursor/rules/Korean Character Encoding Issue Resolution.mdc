@@ -1,0 +1,84 @@
+# Korean Character Encoding Issue Resolution Rules
+
+## Precautions When Handling Korean Filenames/Folder Names in Windows PowerShell
+
+### Problem Situation
+- Encoding issues may occur when directly handling filenames or folder names containing Korean characters in Windows PowerShell.
+- Especially with PowerShell commands like `Rename-Item`, `Move-Item`, Korean filenames may be displayed incorrectly or cause errors.
+
+### Solution Methods
+
+#### 1. Use Python Scripts (Recommended)
+Always use Python scripts when handling Korean filenames/folder names:
+
+```python
+# -*- coding: utf-8 -*-
+import os
+
+# When renaming files
+os.rename('한글파일명.md', 'new_filename.md')
+
+# When renaming folders
+os.rename('한글폴더명', 'new_folder_name')
+```
+
+**Important Notes:**
+- Always add the `# -*- coding: utf-8 -*-` encoding declaration at the top of Python script files.
+- Write file/folder name change operations as separate Python script files and execute them.
+- Delete temporary script files after completing the work.
+
+#### 2. Prohibition of Direct PowerShell Usage
+Do not use the following PowerShell commands when handling Korean filenames:
+- `Rename-Item` (with Korean filenames directly)
+- `Move-Item` (with Korean filenames directly)
+- Using `&&` operator with Korean filenames
+
+#### 3. Workflow
+1. When handling Korean filenames/folder names:
+   - Create a Python script file (include `# -*- coding: utf-8 -*-`)
+   - Create a dictionary mapping filenames/folder names
+   - Use `os.rename()` or `os.path` module
+   - Execute the script
+   - Delete temporary script files after completion
+
+2. When batch processing multiple files:
+   - Define mappings using dictionaries or lists
+   - Process in batch using loops
+   - Check existence at each step (`os.path.exists()`)
+
+#### 4. Exception Handling
+- Include `os.path.exists()` checks to handle cases where files/folders don't exist.
+- Output clear error messages when errors occur.
+
+### Example Template
+
+```python
+# -*- coding: utf-8 -*-
+import os
+
+# Set working directory
+os.chdir(r'c:\workspace\project_name')
+
+# Filename change mapping
+file_mappings = {
+    '한글파일명1.md': 'english_filename1.md',
+    '한글파일명2.md': 'english_filename2.md',
+}
+
+# Execute filename changes
+for old_name, new_name in file_mappings.items():
+    old_path = os.path.join(os.getcwd(), old_name)
+    new_path = os.path.join(os.getcwd(), new_name)
+    if os.path.exists(old_path):
+        os.rename(old_path, new_path)
+        print(f'Renamed: {old_name} -> {new_name}')
+    else:
+        print(f'File not found: {old_path}')
+```
+
+### Checklist
+When working with Korean filenames/folder names, verify the following:
+- [ ] Are you using a Python script file?
+- [ ] Does the script have `# -*- coding: utf-8 -*-` at the top?
+- [ ] Are you checking existence with `os.path.exists()`?
+- [ ] Are you deleting temporary script files after completion?
