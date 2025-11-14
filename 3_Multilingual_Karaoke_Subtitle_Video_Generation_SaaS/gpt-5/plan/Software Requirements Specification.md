@@ -75,6 +75,7 @@ Standard: ISO/IEC/IEEE 29148:2018
 - **TC-xxx**: Test Case ID
 - **NS KPI (North Star KPI)**: 제품의 핵심 성공 지표
 - **Batch**: 여러 개의 영상 작업(Job)을 묶어 처리하는 단위
+- **Triple Subtitle (3중 자막)**: 한 가사 구간에 대해 원문, 번역, 번역 언어의 발음(예: apple / 사과 / 애플)을 동일 타임코드 구간에 세 줄로 동시 표시하는 자막 구성
 
 ### 1.4 References (REF-XX)
 
@@ -130,7 +131,7 @@ Standard: ISO/IEC/IEEE 29148:2018
 
 - **WEB-UI**
   - 브라우저 기반 사용자 인터페이스
-  - 주요 기능: 업로드, 설정, 권리 체크, 배치 생성/모니터링, 결과 검수·다운로드
+  - 주요 기능: 업로드, 설정(플랫폼 프리셋 및 이중/삼중 자막 템플릿 선택), 권리 체크, 배치 생성/모니터링, 결과 검수·다운로드
 - **API Client**
   - 스크립트, 서버 애플리케이션, 노코드 툴 등
   - 사용 목적: 대량 자동화, 기존 워크플로와의 통합
@@ -166,9 +167,9 @@ sequenceDiagram
     UI->>API: 4. Create Job 요청(POST /jobs)
     API->>Store: 5. 미디어/가사 저장
     API->>Proc: 6. Job 큐에 등록
-    Proc->>STT: 7. 정렬/번역 요청
-    STT-->>Proc: 8. 정렬/번역 결과 반환
-    Proc->>Store: 9. 자막/영상 렌더 결과 저장
+    Proc->>STT: 7. 정렬/번역/발음(옵션) 요청
+    STT-->>Proc: 8. 정렬/번역/발음 결과 반환
+    Proc->>Store: 9. 자막/영상 렌더 결과 저장(이중/삼중 자막 포함)
     Proc->>API: 10. Job 상태 업데이트(완료/실패)
     U->>UI: 11. 상태 조회
     UI->>API: 12. GET /jobs/{job_id}
@@ -202,8 +203,8 @@ sequenceDiagram
 | REQ-FUNC-004 | 권리 체크 강제 흐름 제어 | 시스템은 권리 체크리스트가 100% 완료되기 전에는 최종 렌더/게시 프리셋 적용 단계를 진행할 수 없도록 해야 한다. | M | Story 2, PRD 4.1 M3 | **G:** 권리 체크리스트에 미완료 항목이 존재. **W:** 사용자가 렌더/게시 버튼 클릭. **T:** 시스템은 작업을 차단하고, 미완료 항목을 명시하는 오류 메시지를 표시해야 한다. |
 | REQ-FUNC-005 | 카라오케 정렬(음절/박자) 실행 | 시스템은 Job 처리 시 오디오/영상과 가사 텍스트를 입력으로 STT/정렬 엔진을 호출하여, 각 가사 라인·음절에 대한 타임코드를 생성해야 한다. | M | Story 1, PRD 4.1 M1 | **G:** Job이 `PROCESSING` 상태로 전환. **W:** 정렬 단계 실행. **T:** 각 가사 라인에 최소 시작·종료 타임코드가 생성되고, 실패 시 Job은 `FAILED` 상태와 오류 코드(정렬 실패)를 가져야 한다. |
 | REQ-FUNC-006 | QoS 기반 싱크 품질 계산 | 시스템은 생성된 타임코드를 기반으로 싱크 정확도(QoS)를 계산하고, Job 단위 품질 지표를 저장해야 한다. | M | Story 1, PRD 4.1 M1 | **G:** 정렬 결과가 존재. **W:** QoS 계산 모듈 실행. **T:** `MetricSnapshot`에 sync_accuracy(±150ms, ±200ms 구간 비율 등)이 기록되고, UI/대시보드에서 조회 가능해야 한다. |
-| REQ-FUNC-007 | 멀티랭 자막 및 번역 처리 | 시스템은 지정된 대상 언어 목록에 대해 원어 가사를 번역(자동/수동 입력 포함)하고, 언어별 `SubtitleTrack`을 생성해야 한다. | M | Story 1,3, PRD 4.1 M2 | **G:** Job에 target_languages가 설정. **W:** 번역 단계 실행. **T:** 각 대상 언어에 대해 최소 1개의 `SubtitleTrack` 레코드가 생성되고, 번역 실패 시 해당 언어는 실패 상태로 기록되어야 한다. |
-| REQ-FUNC-008 | 이중자막 템플릿 적용 | 시스템은 선택된 교육용 이중자막 템플릿을 원어 + 번역 자막에 적용하여, 레이아웃·색상·폰트 설정이 반영된 자막/영상 결과를 생성해야 한다. | M | Story 3, PRD 4.1 M2 | **G:** 교육자가 이중자막 템플릿 선택. **W:** 렌더링 호출. **T:** 결과 영상/자막에서 두 언어 트랙이 템플릿 규칙에 따라 동시에 표시되고, 텍스트 클리핑 여부를 검증해야 한다(관련 NFR 참조). |
+| REQ-FUNC-007 | 멀티랭 자막 및 번역/발음 처리 | 시스템은 지정된 대상 언어 목록에 대해 원어 가사를 번역(자동/수동 입력 포함)하고, 각 가사 라인에 대해 원문, 번역, 발음(phonetic/reading) 정보를 보관하는 언어별 `SubtitleTrack`(또는 동등한 논리 구조)을 생성해야 한다. | M | Story 1,3, PRD 4.1 M2 | **G:** Job에 target_languages가 설정되어 있고(선택적으로 발음 입력/생성 옵션 포함). **W:** 번역/발음 생성 단계 실행. **T:** 각 대상 언어에 대해 최소 1개의 `SubtitleTrack` 레코드가 생성되고, 발음 데이터가 제공된 라인의 경우 원문/번역/발음 텍스트가 동일 타임코드 구간에 매핑되며, 발음 데이터가 없는 라인이라도 원문/번역 자막 생성은 실패하지 않아야 한다. |
+| REQ-FUNC-008 | 이중/삼중 자막 템플릿 적용 | 시스템은 선택된 교육용 이중/삼중 자막 템플릿을 원문 + 번역(+발음) 자막에 적용하여, 레이아웃·색상·폰트 설정이 반영된 자막/영상 결과를 생성해야 한다. | M | Story 3, PRD 4.1 M2 | **G:** 교육자가 이중 또는 삼중 자막 템플릿을 선택. **W:** 렌더링 호출. **T:** 결과 영상/자막에서 선택된 템플릿 유형에 따라 2줄 또는 3줄(원문/번역/발음)이 동시에 표시되고, 각 줄이 템플릿 규칙 내에서 안전 영역을 벗어나지 않는지(클리핑 여부)를 검증해야 한다(관련 NFR 참조). |
 | REQ-FUNC-009 | 플랫폼 프리셋 설정 및 렌더링 | 시스템은 YouTube/TikTok/Shorts 프리셋을 제공하고, 선택된 프리셋에 따라 인코딩 파라미터(코덱/해상도/비트레이트/자막 스타일)를 설정하여 최종 영상을 렌더링해야 한다. | M | Story 1,2, PRD 4.1 M4 | **G:** 사용자가 플랫폼 프리셋 선택. **W:** 렌더링 요청. **T:** 결과 파일 메타데이터가 프리셋 규격과 일치해야 하며, 업로드 실패율 관련 NFR을 충족해야 한다. |
 | REQ-FUNC-010 | 배치 처리 및 상태 모니터링 | 시스템은 배치 ID를 기반으로 여러 Job의 상태(대기/처리 중/완료/실패)를 집계·표시하고, 배치 진행률을 제공해야 한다. | M | Story 1, PRD 4.1 M5 | **G:** 배치에 1개 이상 Job이 포함. **W:** 대시보드 또는 API에서 배치 조회. **T:** 각 Job의 최신 상태가 표시되고, 배치 완료율(%)이 계산되어야 한다. |
 | REQ-FUNC-011 | Job 재시도 및 오류 관리 | 시스템은 실패한 Job에 대해 재시도 기능을 제공하고, 재시도 시 원인 코드별 정책(자동 재시도/수동 재시도)을 적용해야 한다. | S | PRD 4.1 M5, 5(NFR) | **G:** Job 상태가 FAILED. **W:** 사용자가 재시도 요청 또는 자동 재시도 조건 충족. **T:** Job이 새로운 시도 기록과 함께 재처리되며, 재시도 횟수 제한 및 최종 실패 상태가 기록되어야 한다. |
@@ -212,6 +213,8 @@ sequenceDiagram
 | REQ-FUNC-014 | 메트릭/리포트 조회 API 제공 | 시스템은 Job 성능 및 품질(예: TAT 분포, 성공률, 싱크 정확도)을 조회하는 메트릭 API를 제공해야 한다. | S | PRD 4.1 S3, 5(NFR) | **G:** 권한이 있는 사용자/클라이언트. **W:** `GET /api/v1/metrics/jobs` 호출. **T:** 기간 및 필터에 해당하는 집계 결과가 반환되어야 한다. |
 | REQ-FUNC-015 | 권리 리스크 대시보드 | 시스템은 채널/코호트별 저작권 경고/스트라이크 건수 및 권리 체크 커버리지를 시각화해야 한다. | S | Story 2, PRD 4.1 S3, 5 | **G:** 적절한 권한을 가진 사용자. **W:** 리스크 대시보드 화면 조회. **T:** 사용 기간 내 스트라이크/경고/커버리지 지표가 표시되고, 필터(기간, 채널)가 동작해야 한다. |
 | REQ-FUNC-016 | 사용자 및 권한 관리(요약) | 시스템은 최소한 채널 단위의 사용자 계정과 권한(관리자/편집자)을 구분하여 Job/메트릭 접근을 제어해야 한다. | M | PRD 5(NFR 보안 전제) | **G:** 관리자가 사용자 계정 생성/역할 부여. **W:** 사용자가 로그인 및 리소스 접근 시도. **T:** 사용자는 자신의 채널 범위 내 Job/메트릭만 접근 가능해야 한다. |
+| REQ-FUNC-017 | 발음 데이터 입력/생성 | 시스템은 각 가사 라인에 대해 발음 정보를 (a) 사용자가 직접 입력하거나, (b) 외부/내부 발음 엔진을 통해 자동 생성된 값으로 수용하여 저장할 수 있어야 한다. | M | Story 1,3, PRD 4.1 M2 | **G:** Job에 가사 라인과 대상 언어가 존재하고, 발음 입력 또는 자동 생성 옵션이 활성화됨. **W:** 사용자가 UI/API로 발음 텍스트를 입력하거나, 발음 생성 기능을 호출. **T:** 수동 입력 시 각 라인의 발음 필드가 저장되어 이후 렌더링에서 사용 가능해야 하며, 자동 생성 시 발음 엔진 호출 결과가 저장되어야 하고, 발음이 제공되지 않은 라인이라도 다른 자막 생성 기능에 오류를 유발하지 않아야 한다. |
+| REQ-FUNC-018 | 3중 자막 렌더링 | 시스템의 렌더 엔진은 동일한 타임코드 구간에 대해 원문/번역/발음 세 텍스트 레이어를 지정된 삼중 자막 템플릿에 따라 동시에 표시할 수 있어야 한다. | M | Story 1,3, PRD 4.1 M4 | **G:** 삼중 자막 템플릿이 선택된 Job으로, 원문/번역/발음 데이터가 일부 또는 전체 라인에 존재. **W:** 렌더링을 수행. **T:** 발음 데이터가 존재하는 라인에서는 세 줄이 같은 타임코드 구간에서 동시에 표시되고, 각 줄의 표시/숨김을 템플릿 또는 사용자 설정으로 제어할 수 있어야 하며, 발음 데이터가 없는 라인의 경우에는 원문/번역 2줄만 표시되더라도 렌더링이 실패하지 않아야 한다. |
 
 (필요 시 후속 이터레이션에서 추가 REQ-FUNC 확장 가능)
 
@@ -235,7 +238,7 @@ sequenceDiagram
 | REQ-NF-005 | Reliability (Job 실패율) | 시스템 오류로 인한 Job 실패율은 3% 이하여야 하며, 자동 재시도 후 최종 실패율은 1% 이하여야 한다. | 1차 실패율 ≤ 3%, 최종 실패율 ≤ 1% | PRD 5, 4.1 |
 | REQ-NF-006 | Risk (저작권/스트라이크) | 권리 체크 기능을 사용하는 채널 코호트의 저작권 경고·스트라이크 발생률은 90일 기준로 비사용 코호트 대비 50% 이상 감소해야 하며, 절대 값은 0.1건/100영상 이하여야 한다. | 상대 감소 ≥ 50%, 스트라이크 ≤ 0.1/100영상 | Story 2, PRD 1·8 |
 | REQ-NF-007 | Quality (싱크 정확도) | 싱얼롱 자막의 싱크 정확도는 전체 가사 라인 중 90% 이상이 ±150ms 이내, 95% 이상이 ±200ms 이내여야 한다. | ≥90% (±150ms), ≥95% (±200ms) | Story 1,3, PRD 1·5 |
-| REQ-NF-008 | Quality (이중자막 가독성) | 교육용 이중자막 템플릿을 적용한 영상에서, 프레임의 95% 이상은 내부 가독성 규칙(대비비 ≥ 4.5:1, 최소 폰트 크기 ≥ 24pt)을 만족해야 한다. 텍스트 클리핑이 발생하는 프레임은 1% 이하여야 한다. | 가독성 양호 프레임 ≥ 95%, 클리핑 프레임 ≤ 1% | Story 3, PRD 5 |
+| REQ-NF-008 | Quality (이중/삼중 자막 가독성) | 교육용 이중/삼중 자막 템플릿을 적용한 영상에서, 프레임의 95% 이상은 내부 가독성 규칙(대비비 ≥ 4.5:1, 최소 폰트 크기 ≥ 24pt)을 만족해야 한다. 텍스트 클리핑이 발생하는 프레임은 1% 이하여야 하며, 삼중 자막의 경우에도 세 줄 모두 해당 기준을 만족해야 한다. | 가독성 양호 프레임 ≥ 95%, 클리핑 프레임 ≤ 1% | Story 3, PRD 5 |
 | REQ-NF-009 | Usability (교육자 만족도) | 교육자 대상 설문에서 싱크 정확도 만족도가 평균 4.0/5.0 이상, 번역 자연스러움 만족도가 평균 3.8/5.0 이상이어야 한다. | 싱크 ≥ 4.0, 번역 ≥ 3.8 (5점 척도) | Story 3, PRD 8 |
 | REQ-NF-010 | Productivity (제작 시간 단축) | 베타 사용자 기준, 영상 1편당 평균 제작 리드타임은 기존 대비 80% 이상 감소해야 하며, 목표 값은 10분 이하/편이다. | 리드타임 ≥ 80% 감소, 평균 ≤ 10분/편 | Story 1,3, PRD 1·8 |
 | REQ-NF-011 | Scalability (Batch 처리) | 한 배치당 최대 50편 영상 처리 시, 90% 이상의 Job이 2시간 이내에 완료되어야 한다. | 배치 내 Job 90% 완료 ≤ 2시간 | Story 1, PRD 1·5 |
@@ -245,6 +248,7 @@ sequenceDiagram
 | REQ-NF-015 | Cost Efficiency | 기준 워크플로(프리랜서/스튜디오 외주) 대비 단위 영상당 총 비용이 50% 이상 절감되도록 가격/인프라 모델을 설계해야 한다. | 단위 비용 ≥ 50% 절감(비교 실험 기준) | PRD 8 |
 | REQ-NF-016 | Maintainability | 주요 서비스는 컨테이너 기반 배포 및 헬스 체크를 지원해야 하며, 장애 발생 시 평균 복구 시간(MTTR)은 1시간 이하를 목표로 한다. | MTTR ≤ 1시간 (운영 리포트 기준) | PRD 5 |
 | REQ-NF-017 | Compatibility (플랫폼 프리셋) | 프리셋을 사용해 생성한 영상의 플랫폼 규격 불일치로 인한 업로드 실패율은 전체 업로드의 1% 이하여야 한다. | 업로드 실패(규격 이슈) ≤ 1% | Story 2, PRD 3·5 |
+| REQ-NF-018 | Usability (Triple Subtitle Layout) | 모바일/소형 화면에서 삼중 자막 템플릿이 적용된 경우에도 세 줄 모두 최소 폰트 크기 18pt 이상, 라인 간 간격이 서로 겹치지 않도록 렌더링되어야 하며, 세 줄 중 어느 한 줄도 화면 안전 영역 밖으로 벗어나는 비율은 전체 프레임의 1% 이하여야 한다. | 모바일 기준: 삼중 자막 적용 프레임의 ≥ 99%에서 세 줄 모두 안전 영역 내, 각 줄 폰트 크기 ≥ 18pt | Story 3, PRD 5 |
 
 ---
 
@@ -254,9 +258,9 @@ Story, Requirement, Test Case 간 추적성 매트릭스는 다음과 같다.
 
 | Story ID | Story Summary | Requirement IDs (FUNC & NF) | Test Case IDs (예시) |
 | --- | --- | --- | --- |
-| Story 1 | “10분 이내 자동 싱얼롱 영상 생성” | REQ-FUNC-001, 002, 005, 006, 007, 009, 010, 012, 013, 014, REQ-NF-001, 002, 003, 004, 005, 007, 010, 011 | TC-001 ~ TC-020 |
+| Story 1 | “10분 이내 자동 싱얼롱 영상 생성” | REQ-FUNC-001, 002, 005, 006, 007, 009, 010, 012, 013, 014, 017, 018, REQ-NF-001, 002, 003, 004, 005, 007, 010, 011, 018 | TC-001 ~ TC-020 |
 | Story 2 | “업로드 단계에서 저작권·스트라이크 리스크 최소화” | REQ-FUNC-003, 004, 009, 015, 016, REQ-NF-004, 006, 012, 013, 014, 017 | TC-021 ~ TC-035 |
-| Story 3 | “이중자막·고가독성 교육용 싱얼롱 영상” | REQ-FUNC-007, 008, 012, REQ-NF-007, 008, 009, 010 | TC-036 ~ TC-045 |
+| Story 3 | “이중자막·고가독성 교육용 싱얼롱 영상” | REQ-FUNC-007, 008, 012, 017, 018, REQ-NF-007, 008, 009, 010, 018 | TC-036 ~ TC-045 |
 
 > 각 TC는 별도의 테스트 명세서에서 상세 Given/When/Then과 테스트 데이터, 기대 결과를 정의하며, 여기서는 ID 레벨 매핑만 제공한다.
 
@@ -268,7 +272,7 @@ Story, Requirement, Test Case 간 추적성 매트릭스는 다음과 같다.
 
 | No | Method | Endpoint | Description | Request (요약) | Response (요약) | Related Requirements |
 | --- | --- | --- | --- | --- | --- | --- |
-| API-01 | POST | `/api/v1/jobs` | 단일/배치 Job 생성 | media_assets[], preset_id, target_languages[], platform, rights_metadata | job_id, batch_id, estimated_completion_time, invalid_items[] | REQ-FUNC-001, 002, 003, 013, REQ-NF-003 |
+| API-01 | POST | `/api/v1/jobs` | 단일/배치 Job 생성 | media_assets[], preset_id, target_languages[], platform, rights_metadata, (옵션) 발음 정보를 포함한 자막 라인 데이터 | job_id, batch_id, estimated_completion_time, invalid_items[] | REQ-FUNC-001, 002, 003, 013, REQ-NF-003 |
 | API-02 | GET | `/api/v1/jobs/{job_id}` | Job 상태 및 결과 조회 | path: job_id, auth token | status, progress, result_links, error_details | REQ-FUNC-010, 013, REQ-NF-002 |
 | API-03 | GET | `/api/v1/metrics/jobs` | Job/배치 메트릭 조회 | query: from, to, channel_id, preset, platform | aggregated TAT, success/fail rates, sync_accuracy, rights_coverage | REQ-FUNC-014, 015, REQ-NF-001, 004, 005, 006, 007, 014 |
 | API-04 | POST/PUT | `/api/v1/jobs/{job_id}/retry` (예시) | 실패 Job 재시도 | path: job_id | new_attempt_id, status | REQ-FUNC-011, REQ-NF-005 |
@@ -310,10 +314,26 @@ Story, Requirement, Test Case 간 추적성 매트릭스는 다음과 같다.
 | id | UUID | SubtitleTrack ID | Primary Key |
 | job_id | UUID | Job ID | FK(Job) |
 | language | String | 자막 언어 코드 | Not null |
-| type | ENUM (`ORIGINAL`, `TRANSLATION`, `BILINGUAL`) | 트랙 유형 | Not null |
+| type | ENUM (`ORIGINAL`, `TRANSLATION`, `BILINGUAL`, `PRONUNCIATION`) | 트랙 유형(원문/번역/이중자막/발음 전용 트랙) | Not null |
 | format | ENUM (`SRT`, `ASS`, `CUSTOM`) | 포맷 | Not null |
 | qos_score | Float | 싱크 품질 점수 (0~1 또는 %) | Optional |
 | content_uri | String | 자막 파일 위치 | Not null |
+
+#### 6.2.6 Entity: LyricSegment (논리 모델)
+
+| Field | Type | Description | Constraints |
+| --- | --- | --- | --- |
+| id | UUID | LyricSegment ID | Primary Key |
+| job_id | UUID | Job ID | FK(Job) |
+| index | Integer | 곡 내 가사 라인/세그먼트 인덱스 | Not null |
+| start_time_ms | Integer | 세그먼트 시작 시각(ms) | Not null |
+| end_time_ms | Integer | 세그먼트 종료 시각(ms) | Not null |
+| original_text | String | 원문 가사 텍스트 | Not null |
+| translated_text | String (nullable) | 번역 텍스트 | Optional |
+| pronunciation_text | String (nullable) | 번역 언어의 발음/읽기(예: romanization, 가나 등) | Optional |
+| source_language | String | 원문 언어 코드 | Not null |
+| target_language | String (nullable) | 번역 언어 코드 | Optional |
+| pronunciation_system | String (nullable) | 사용된 발음 표기 체계(예: Revised Romanization 등) | Optional |
 
 #### 6.2.4 Entity: RightsCheck
 
@@ -374,9 +394,9 @@ sequenceDiagram
     API-->>UI: job_id, estimated_completion_time
     loop Worker
         Queue->>Proc: Job 할당(status=PROCESSING)
-        Proc->>STT: 정렬/번역 요청
-        STT-->>Proc: 정렬/번역 결과
-        Proc->>Render: 프리셋 기반 렌더링 요청
+        Proc->>STT: 정렬/번역/발음(옵션) 요청
+        STT-->>Proc: 정렬/번역/발음 결과
+        Proc->>Render: 프리셋 및 이중/삼중 자막 템플릿 기반 렌더링 요청
         Render-->>Proc: 결과 파일 URI
         Proc->>Store: 자막/영상 결과 저장
         Proc->>API: Job 상태 업데이트(COMPLETED/FAILED)
