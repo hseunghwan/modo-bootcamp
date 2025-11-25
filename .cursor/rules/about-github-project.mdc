@@ -1,0 +1,19 @@
+---
+alwaysApply: false
+---
+- **GitHub 리포지토리 기본 정보**
+  - 이 프로젝트는 GitHub 리포지토리 `https://github.com/hseunghwan/modo-bootcamp.git` 에 연결되어 있다.
+  - GitHub 계정/오너는 `hseunghwan`, 리포지토리 이름은 `modo-bootcamp` 이다.
+
+- **브랜치 및 원격(remote) 규칙**
+  - 기본 브랜치는 `main` 이며, 로컬 `main` 브랜치는 원격 `origin/main` 을 트래킹한다.
+  - `origin` 원격은 `https://github.com/hseunghwan/modo-bootcamp.git` 으로 설정되어 있다.
+  - Git 관련 명령어를 제안할 때, 별도 언급이 없으면 기본적으로 `origin` 원격과 `main` 브랜치를 기준으로 한다.
+
+- **커밋 및 PR 관련 기본 가정**
+  - 새로운 작업 흐름은 보통 `main` 에서 분기한 기능 브랜치(feature/…, fix/… 등)를 사용한 뒤, GitHub Pull Request를 통해 `main` 에 병합하는 것을 기본으로 가정한다.
+  - 커밋 메시지나 브랜치 네이밍 규칙이 별도로 지정되지 않은 경우, 일반적인 관례(예: `feat: …`, `fix: …`)에 맞게 제안한다.
+
+- **기타**
+  - Git 상태 스냅샷 기준으로, 현재 로컬 `main` 은 `origin/main` 과 동기화된(clean) 상태였다.
+  - 위 정보는 `.git/config` 및 `git status` 출력 기준으로 작성되며, 사용자가 원격/브랜치 구성을 변경하면 이 룰 내용도 함께 업데이트해야 한다.

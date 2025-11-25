@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+목적 : 루트 레벨 프로젝트 정의 및 제약 조건
+
+범위 : 전체 작업 공간
+
+내용 : 핵심 아키텍처, 주요 디렉토리 및 주요 제약 조건 정의
+
+Description: Brief overview of project purpose and main functions
+Globs: /**/*
+본문에는 다음 내용을 정의해야 합니다.
+
+핵심 프로젝트 기능/구성 요소
+
+주요 디렉토리 및 그 목적
+
+주요 제약 조건/규칙
+
+25줄 이내로 간결하게 작성하세요
